@@ -87,7 +87,8 @@ def train(args):
 		raise Exception('Unknown loss type:'+args.loss)
 		
 	optimizer = optim.Adam(core.model.parameters(), args.lr)
-	scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=50, threshold=1e-4, min_lr=1e-5)
+	# scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, threshold=1e-4, min_lr=1e-5)
+	scheduler = optim.lr_scheduler.StepLR(optimizer, 35, gamma=0.5)
 	core.inject_loss_fn(loss_fn)
 	core.inject_optim(optimizer)
 	core.inject_scheduler(scheduler)

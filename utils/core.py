@@ -94,7 +94,7 @@ class SRCore:
 				writer.add_scalar(tag='train/loss', scalar_value=loss.item(), global_step=self.batch_cnt)
 			pass
 		mean_loss = np.mean(total_loss)
-		# scheduler.step(mean_loss)
+		scheduler.step()
 		return mean_loss
 
 	def train_parallel(self, dataloader):
