@@ -20,14 +20,14 @@ def parse_args():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--dataset', default='CAVE', choices=['CAVE', 'Pavia', 'Salinas','PaviaU', 'KSC', 'Indian', 'ICVL'])
 	parser.add_argument('--scale_factor', default=4, type=int)
-	parser.add_argument('--batch_size', default=16, type=int)
+	parser.add_argument('--batch_size', default=32, type=int)
 	parser.add_argument('--epoch', default=2000)
 	parser.add_argument('--lr', default=1e-4, type=float, help='Learning Rate')
 	parser.add_argument('--seed', default=17, type=int)
 	parser.add_argument('--device', default='cuda:0')
 	parser.add_argument('--parallel', default=False, type=bool)
 	parser.add_argument('--device_ids', default=['cuda:2', 'cuda:4', 'cuda:0', 'cuda:3'])
-	parser.add_argument('--loss', default='L1')
+	parser.add_argument('--loss', default='L1', choices=['L1', 'L2', 'Hybrid'])
 	parser.add_argument('--model', default='SSPSR')
 	# CAVE
 	parser.add_argument('--train_hr_path', default='data/CAVE/train.npy')
@@ -81,14 +81,16 @@ def train(args):
 	# loss optimizer
 	if args.loss == 'L1':
 		loss_fn = nn.L1Loss()
+	elif args.loss == 'L2':
+		loss_fn = nn.MSELoss()
 	elif args.loss == 'Hybrid':
 		loss_fn = HybridLoss(spatial_tv=True, spectral_tv=True)	# This loss is refs to SSPSR
 	else:
 		raise Exception('Unknown loss type:'+args.loss)
 		
 	optimizer = optim.Adam(core.model.parameters(), args.lr)
-	# scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, threshold=1e-4, min_lr=1e-5)
-	scheduler = optim.lr_scheduler.StepLR(optimizer, 35, gamma=0.5)
+	scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, threshold=1e-4, min_lr=1e-5)
+	# scheduler = optim.lr_scheduler.StepLR(optimizer, 35, gamma=0.5)
 	core.inject_loss_fn(loss_fn)
 	core.inject_optim(optimizer)
 	core.inject_scheduler(scheduler)
