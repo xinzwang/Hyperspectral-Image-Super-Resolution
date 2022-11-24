@@ -3,16 +3,12 @@ from .SwinIR.SwinIR import SwinIR
 
 from .SSPSR.sspsr import SSPSR
 from .MCNet.mcnet import MCNet
-
+from .BiQRNN3D.model import BiFQRNNREDC3D
 
 
 from .GDRRN.gdrrn import GDRRN
 from .FCNN3D.fcnn3d import FCNN3D
 from .EDSR.edsr import EDSR
-
-
-
-from .BiQRNN3D.model import BiFQRNNREDC3D
 
 
 from .CANet.v1 import CANetV1

@@ -1,5 +1,5 @@
-import math
 import torch.nn as nn
+import math
 
 
 def default_conv(in_channels, out_channels, kernel_size, bias=True, dilation=1):

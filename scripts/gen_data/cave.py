@@ -21,7 +21,7 @@ from common import gen_panel_from_area
 def parse_args():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--data_path', default='/data2/wangxinzhe/codes/datasets/CAVE/hsi/')
-	parser.add_argument('--save_path', default='../../data/CAVE/')
+	parser.add_argument('--save_path', default='../../data/CAVE/bicubic/')
 	parser.add_argument('--train_num', default=20)
 	parser.add_argument('--val_num', default=3)
 	parser.add_argument('--patch_size', default=64)

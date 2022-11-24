@@ -8,13 +8,13 @@ import os
 import argparse
 import glob
 import numpy as np
-from common import down_sample
+from common import down_sample, bicubic_downsample
 
 
 def parse_args():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--data_path', default='../../data/CAVE/')
-	parser.add_argument('--save_path', default='../../data/CAVE/')
+	parser.add_argument('--save_path', default='../../data/CAVE/bicubic/')
 	parser.add_argument('--train_num', default=20)
 	
 	args = parser.parse_args()
@@ -29,7 +29,6 @@ def run(args):
 	# cal band mean in train data
 	band_mean = np.mean(train_data, axis=(0, 1, 2))
 	print(band_mean)
-
 	print(train_data.shape)
 
 	# down sample
@@ -37,25 +36,32 @@ def run(args):
 		# train
 		down_train = []
 		for img in train_data:
-			img = down_sample(img, scale, kernel_size=(9, 9), sigma=3)
+			# img = down_sample(img, scale, kernel_size=(9, 9), sigma=3)
+			img = bicubic_downsample(img, scale)
 			down_train.append(img)
+
 		# val
 		down_val = []
 		for img in val_data:
-			img = down_sample(img, scale, kernel_size=(9, 9), sigma=3)
+			# img = down_sample(img, scale, kernel_size=(9, 9), sigma=3)
+			img = bicubic_downsample(img, scale)
 			down_val.append(img)
+
 		# test
 		down_test = []
 		for img in test_data:
-			down_test.append(down_sample(img, scale, kernel_size=(9, 9), sigma=3))
+			# img = down_sample(img, scale, kernel_size=(9, 9), sigma=3)
+			img = bicubic_downsample(img, scale)
+			down_test.append(img)
 
 		down_train = np.array(down_train)
+		down_val = np.array(down_val)
 		down_test = np.array(down_test)
 
-
-		np.save(args.save_path + 'train_scale=%d_ksize=9_sigma=3.npy' %(scale), down_train)
-		np.save(args.save_path + 'val_scale=%d_ksize=9_sigma=3.npy' %(scale), down_val)
-		np.save(args.save_path + 'test_scale=%d_ksize=9_sigma=3.npy' %(scale), down_test)
+		# save result
+		np.save(args.save_path + 'train_scale=%d.npy' %(scale), down_train)
+		np.save(args.save_path + 'val_scale=%d.npy' %(scale), down_val)
+		np.save(args.save_path + 'test_scale=%d.npy' %(scale), down_test)
 
 if __name__=='__main__':
 	args = parse_args()

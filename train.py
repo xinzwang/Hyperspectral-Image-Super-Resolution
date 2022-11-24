@@ -31,9 +31,11 @@ def parse_args():
 	parser.add_argument('--model', default='SSPSR')
 	# CAVE
 	parser.add_argument('--train_hr_path', default='data/CAVE/train.npy')
-	parser.add_argument('--train_lr_path', default='data/CAVE/train_scale=4_ksize=9_sigma=3.npy')
 	parser.add_argument('--val_hr_path', default='data/CAVE/val.npy')
-	parser.add_argument('--val_lr_path', default='data/CAVE/val_scale=4_ksize=9_sigma=3.npy')
+	# parser.add_argument('--train_lr_path', default='data/CAVE/bicubic_gauss_ksize=9_sigma=3/train_scale=4.npy')
+	# parser.add_argument('--val_lr_path',   default='data/CAVE/bicubic_gauss_ksize=9_sigma=3/valscale=4.npy')
+	parser.add_argument('--train_lr_path', default='data/CAVE/bicubic/train_scale=4.npy')
+	parser.add_argument('--val_lr_path',   default='data/CAVE/bicubic/val_scale=4.npy')
 
 	args = parser.parse_args()
 	print(args)
@@ -89,8 +91,8 @@ def train(args):
 		raise Exception('Unknown loss type:'+args.loss)
 		
 	optimizer = optim.Adam(core.model.parameters(), args.lr)
-	scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, threshold=1e-4, min_lr=1e-5)
-	# scheduler = optim.lr_scheduler.StepLR(optimizer, 35, gamma=0.5)
+	scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, threshold=1e-4, min_lr=5e-5)
+	# scheduler = optim.lr_scheduler.StepLR(optimizer, 60, gamma=0.5)
 	core.inject_loss_fn(loss_fn)
 	core.inject_optim(optimizer)
 	core.inject_scheduler(scheduler)

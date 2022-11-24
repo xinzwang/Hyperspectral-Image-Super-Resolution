@@ -41,3 +41,8 @@ def down_sample(x, scale_factor=2, kernel_size=(7,7), sigma=3):
 	out = cv2.GaussianBlur(x, ksize=kernel_size, sigmaX=sigma,sigmaY=sigma)
 	out = cv2.resize(out, (0,0), fx=1/scale_factor, fy=1/scale_factor, interpolation=cv2.INTER_CUBIC)
 	return out
+
+def bicubic_downsample(img, scale_factor=2):
+  [h, w, _] = img.shape
+  new_h, new_w = int(h / scale_factor), int(w / scale_factor)
+  return cv2.resize(img, (new_h, new_w), interpolation=cv2.INTER_CUBIC)
