@@ -17,8 +17,8 @@ from datasets.common import Downsample
 
 def parse_args():
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--data_path', default='../../data/CAVE/archive/')
-	parser.add_argument('--save_path', default='../../data/CAVE/archive/liang/')
+	parser.add_argument('--data_path', default='../../data/Pavia/')
+	parser.add_argument('--save_path', default='../../data/Pavia/bicubic+gauss/')
 	
 	args = parser.parse_args()
 	print(args)
@@ -26,7 +26,6 @@ def parse_args():
 
 def run(args):
 	train_data = np.load(args.data_path + 'train.npy')
-	val_data = np.load(args.data_path + 'val.npy')
 	test_data = np.load(args.data_path + 'test.npy')
 
 	# cal band mean in train data
@@ -44,14 +43,6 @@ def run(args):
 			img = Downsample(img, scale, sigma=3, ksize=9)
 			down_train.append(img)
 
-		# val
-		down_val = []
-		for img in tqdm(val_data):
-			# img = down_sample(img, scale, kernel_size=(9, 9), sigma=3)
-			# img = bicubic_downsample(img, scale)
-			img = Downsample(img, scale, sigma=3, ksize=9)
-			down_val.append(img)
-
 		# test
 		down_test = []
 		for img in tqdm(test_data):
@@ -61,12 +52,12 @@ def run(args):
 			down_test.append(img)
 
 		down_train = np.array(down_train)
-		down_val = np.array(down_val)
 		down_test = np.array(down_test)
 
 		# save result
+		print(down_train.shape)
+		print(down_test.shape)
 		np.save(args.save_path + 'train_scale=%d.npy' %(scale), down_train)
-		np.save(args.save_path + 'val_scale=%d.npy' %(scale), down_val)
 		np.save(args.save_path + 'test_scale=%d.npy' %(scale), down_test)
 
 if __name__=='__main__':

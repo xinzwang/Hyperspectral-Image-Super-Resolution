@@ -12,16 +12,15 @@ from torch.utils.tensorboard import SummaryWriter
 
 from models.loss import HybridLoss
 
-from utils.tools import create_logger, build_dataset, set_seed
+from utils.tools import create_logger, build_dataset, set_seed, GetChansNumByDataName
 from utils.test import test, visual
 from utils.core import SRCore
 
 def parse_args():
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--dataset', default='CAVE', choices=['CAVE', 'Pavia', 'Salinas','PaviaU', 'KSC', 'Indian', 'ICVL'])
 	parser.add_argument('--scale_factor', default=4, type=int)
 	parser.add_argument('--batch_size', default=32, type=int)
-	parser.add_argument('--epoch', default=2000)
+	parser.add_argument('--epoch', default=5000)
 	parser.add_argument('--lr', default=1e-4, type=float, help='Learning Rate')
 	parser.add_argument('--seed', default=17, type=int)
 	parser.add_argument('--device', default='cuda:0')
@@ -29,13 +28,11 @@ def parse_args():
 	parser.add_argument('--device_ids', default=['cuda:2', 'cuda:4', 'cuda:0', 'cuda:3'])
 	parser.add_argument('--loss', default='L1', choices=['L1', 'L2', 'Hybrid'])
 	parser.add_argument('--model', default='SSPSR')
-	# CAVE
-	parser.add_argument('--train_hr_path', default='data/CAVE/train.npy')
-	parser.add_argument('--val_hr_path', default='data/CAVE/val.npy')
-	# parser.add_argument('--train_lr_path', default='data/CAVE/bicubic_gauss_ksize=9_sigma=3/train_scale=4.npy')
-	# parser.add_argument('--val_lr_path',   default='data/CAVE/bicubic_gauss_ksize=9_sigma=3/valscale=4.npy')
-	parser.add_argument('--train_lr_path', default='data/CAVE/bicubic/train_scale=4.npy')
-	parser.add_argument('--val_lr_path',   default='data/CAVE/bicubic/val_scale=4.npy')
+	parser.add_argument('--use_lms', default=False, type=bool)
+
+	parser.add_argument('--train_dataset', default='CAVE')
+	parser.add_argument('--val_dataset', default='CAVE')
+	
 
 	args = parser.parse_args()
 	print(args)
@@ -43,7 +40,7 @@ def parse_args():
 
 def train(args):
 	t = time.strftime('%Y-%m-%d_%H-%M-%S')
-	checkpoint_path = 'ckpts/%s/%s/%d/%s/' % (args.dataset, args.model, args.scale_factor, t)
+	checkpoint_path = 'ckpts/%s/%s/%d/%s/' % (args.train_dataset, args.model, args.scale_factor, t)
 	if not os.path.exists(checkpoint_path):
 		os.makedirs(checkpoint_path)
 		
@@ -61,24 +58,26 @@ def train(args):
 
 	# dataset
 	dataset, dataloader = build_dataset(
-		dataset=args.dataset, 
-		path=(args.train_lr_path, args.train_hr_path),
-		batch_size=args.batch_size, 
-		scale_factor=args.scale_factor, 
-		test_flag=False)
+		name=args.train_dataset,
+		scale_factor=args.scale_factor,
+		state='train',
+		use_lms=args.use_lms,
+		batch_size=args.batch_size)
 	test_dataset, test_dataloader = build_dataset(
-		dataset=args.dataset, 
-		path=(args.val_lr_path, args.val_hr_path),
-		batch_size=1, 
-		scale_factor=args.scale_factor, 
-		test_flag=True)
+		name=args.val_dataset,
+		scale_factor=args.scale_factor,
+		state='val',
+		use_lms=args.use_lms,
+		batch_size=args.batch_size)
 
 	# core
+	channels = GetChansNumByDataName(args.train_dataset)
+
 	core = SRCore(batch_log=10)
 	core.inject_logger(logger)
 	core.inject_writer(writer)
 	core.inject_device(device)
-	core.build_model(name=args.model, channels=dataset.channels, scale_factor=args.scale_factor)
+	core.build_model(name=args.model, channels=channels, scale_factor=args.scale_factor)
 	
 	# loss optimizer
 	if args.loss == 'L1':
@@ -89,12 +88,12 @@ def train(args):
 		loss_fn = HybridLoss(spatial_tv=True, spectral_tv=True)	# This loss is refs to SSPSR
 	else:
 		raise Exception('Unknown loss type:'+args.loss)
+	core.inject_loss_fn(loss_fn)
 		
 	optimizer = optim.Adam(core.model.parameters(), args.lr)
-	scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, threshold=1e-4, min_lr=5e-5)
-	# scheduler = optim.lr_scheduler.StepLR(optimizer, 60, gamma=0.5)
-	core.inject_loss_fn(loss_fn)
 	core.inject_optim(optimizer)
+	# scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, threshold=1e-4, min_lr=1e-5)
+	scheduler = optim.lr_scheduler.StepLR(optimizer, 500, gamma=0.5)
 	core.inject_scheduler(scheduler)
 
 	if args.parallel:
@@ -102,11 +101,11 @@ def train(args):
 	
 	# train loop
 	for epoch in range(args.epoch):
-		mean_loss = core.train(dataloader)
+		mean_loss = core.train(dataloader, use_lms=args.use_lms)
 		logger.info('[TEST] epoch:%d mean_loss:%.5f'%(epoch, mean_loss))
 
-		if epoch % 5 == 0:
-			psnr, ssim, sam, ergas = test(core.model, test_dataloader, device=device)
+		if epoch % 20 == 0:
+			psnr, ssim, sam, ergas = test(core.model, test_dataloader, device=device, use_lms=args.use_lms)
 			logger.info('[TEST] epoch:%d psnr:%.7f ssim:%.7f sam:%.7f mergas:%.7f' %(epoch, psnr, ssim, sam, ergas))
 			writer.add_scalar(tag='score/PSNR', scalar_value=psnr, global_step=epoch)
 			writer.add_scalar(tag='score/SSIM', scalar_value=ssim, global_step=epoch)
@@ -114,8 +113,8 @@ def train(args):
 			writer.add_scalar(tag='score/ERGAS', scalar_value=ergas, global_step=epoch)
 
 			save_path = checkpoint_path + 'epoch=%d_psnr=%.2f_ssim=%.2f/'%(epoch, psnr,ssim)
-			visual(core.model, test_dataloader, img_num=3, save_path=save_path, device=device)
-			core.save_ckpt(save_path +'ckpt.pt', dataset=args.dataset)
+			visual(core.model, test_dataloader, img_num=3, save_path=save_path, device=device, use_lms=args.use_lms)
+			core.save_ckpt(save_path +'ckpt.pt', dataset=args.train_dataset)
 
 	# save the final model
 	save_path = checkpoint_path + 'final_psnr=%.2f_ssim=%.2f/'%(epoch, psnr, ssim)

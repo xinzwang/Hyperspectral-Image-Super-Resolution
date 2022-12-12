@@ -8,8 +8,6 @@ class BiFQRNNREDC3D(nn.Module):
 		def __init__(self, channels=16, scale_factor=2, num_half_layer=5, sample_idx=[1,3]):
 				super(BiFQRNNREDC3D, self).__init__()
 
-				self.up = nn.Upsample(scale_factor=scale_factor, mode='bicubic', align_corners=True)
-		
 				in_channels = 1
 				assert sample_idx is None or isinstance(sample_idx, list)
 				if sample_idx is None: sample_idx = []
@@ -18,8 +16,8 @@ class BiFQRNNREDC3D(nn.Module):
 				self.decoder = BiQRNN3DDecoder(channels*(2**len(sample_idx)), num_half_layer, sample_idx)
 				self.reconstructor = BiQRNNDeConv3D(channels, in_channels, bias=True)
 		
-		def forward(self, x):
-				x = self.up(x)
+		def forward(self, x, lms):
+				x = lms
 				x = x.unsqueeze(1)
 				xs = [x]
 				out = self.feature_extractor(xs[0])

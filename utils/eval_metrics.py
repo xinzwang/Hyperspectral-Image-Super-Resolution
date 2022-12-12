@@ -77,7 +77,7 @@ def compare_sam(x_true, x_pred):
             tmp_true = x_true[x, y].ravel()
             if np.linalg.norm(tmp_true) != 0 and np.linalg.norm(tmp_pred) != 0:
                 sum_sam += np.arccos(
-                    np.inner(tmp_pred, tmp_true) / (np.linalg.norm(tmp_true) * np.linalg.norm(tmp_pred)))
+                    np.inner(tmp_pred, tmp_true) / (np.linalg.norm(tmp_true) * np.linalg.norm(tmp_pred) + 1e-8))
                 num += 1
     sam_deg = (sum_sam / num) * 180 / np.pi
     return sam_deg

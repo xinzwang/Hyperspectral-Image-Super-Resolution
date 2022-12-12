@@ -10,19 +10,30 @@ Where N represents the number of image, H and W represent the image width, and C
 import os
 import math
 import numpy as np
+
 import torch
+import torch.nn.functional as F
 from torch.utils.data import Dataset
 
+
 class SingleDataset(Dataset):
-	def __init__(self, path, scale_factor=2, test_flag=False):
+	def __init__(self, path, scale_factor=2, test_flag=False, p=0.1):
 		super(SingleDataset, self).__init__()
 
 		self.scale_factor = scale_factor
 		self.test_flag = test_flag
 
+		print('[SingleDataset %s] load dataset' % ('TEST' if test_flag else 'TRAIN'))
 		self.lr = np.load(path[0])	# NHWC; [0, 1]; float32
 		self.hr = np.load(path[1])	# NHWC; [0, 1]; float32
 
+		# use P percent train data
+		if not test_flag:
+			l = self.lr.shape[0]
+			self.lr = self.lr[0:int(l*p), ...]
+			self.hr = self.hr[0:int(l*p), ...]
+			print('Before:%d After:%d' %(l, self.lr.shape[0]))
+			
 		self.shape = self.hr.shape
 		self.channels = self.shape[-1]
 		self.len = self.shape[0]
@@ -35,20 +46,14 @@ class SingleDataset(Dataset):
 		hr = self.hr[index, ...]
 		lr = self.lr[index, ...]
 
-		return lr.transpose(2,0,1), hr.transpose(2,0,1)
+		lr = np.ascontiguousarray(lr.transpose(2, 0, 1))
+		hr = np.ascontiguousarray(hr.transpose(2, 0, 1))
 
+		lr = torch.from_numpy(lr).float()
+		hr = torch.from_numpy(hr).float()
 
-if __name__ == '__main__':
-	import glob
-	import cv2
-	import numpy as np
+		# lms = F.interpolate(lr.unsqueeze(0),  scale_factor=self.scale_factor, mode='bicubic', align_corners=False).squeeze(0)
+		# return lr, lms, hr
+		
+		return lr, hr
 
-	paths = glob.glob('/data2/wangxinzhe/codes/datasets/CAVE/hsi/*.npy')
-	print(paths)
-	for i, x in enumerate(paths):
-		gt = np.load(x)
-		print('gt shape', gt.shape)
-		print('gt min:', gt.min())
-		print('gt max:', gt.max())
-
-		cv2.imwrite('img/cave/%s.png'%(x.split('/')[-1].split('.')[0]), np.mean(gt, axis=2)/ gt.max() * 255 )

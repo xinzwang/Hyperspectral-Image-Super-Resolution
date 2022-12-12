@@ -132,3 +132,4 @@ dmypy.json
 # users
 data/
 ckpts/
+img/

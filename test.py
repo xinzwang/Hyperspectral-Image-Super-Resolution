@@ -10,49 +10,59 @@ import torch.optim as optim
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
 
-
+import utils.test_rgb as test_rgb
 from utils.tools import build_dataset
 from utils.test import test, visual
-from utils.core import SRCore
+from utils.core_rgb import RGBCore
 
+from models import *
 # from models import BiFQRNNREDC3D
 
 def parse_args():
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--dataset', default='CAVE', choices=['ICVL', 'CAVE', 'Pavia', 'Salinas','PaviaU', 'KSC', 'Indian'])
-	parser.add_argument('--scale_factor', default=2, type=int)
-	parser.add_argument('--batch_size', default=16, type=int)
-	parser.add_argument('--device', default='cpu')
+	parser.add_argument('--mode', type=str, choices=['RGB', 'HSI'], required=True)
+	parser.add_argument('--scale_factor', default=4, type=int)
+	parser.add_argument('--batch_size', default=1, type=int)
+	parser.add_argument('--device', default='cuda:1')
+	parser.add_argument('--visual', default=False)
+	parser.add_argument('--save_path', default='imgs/')
 
-	parser.add_argument('--ckpt', default='ckpts/CAVE/MCNet/4/2022-11-24_00-42-14/epoch=475_psnr=39.71_ssim=0.98/ckpt.pt')
-	# CAVE
-	parser.add_argument('--test_hr_path', default='data/CAVE/test.npy')
-	parser.add_argument('--test_lr_path', default='data/CAVE/bicubic_gauss_ksize=9_sigma=3/test_scale=4.npy')
-	# parser.add_argument('--test_lr_path', default='data/CAVE/bicubic/test_scale=4.npy')
+	# parser.add_argument('--ckpt', default='Bicubic')
+	parser.add_argument('--ckpt', type=str)
+	parser.add_argument('--use_lms', type=bool)
+
+	parser.add_argument('--dataset', default='CAVE')
 
 	args = parser.parse_args()
 	print(args)
 	return args
 
+
 def run(args):
 	device=torch.device(args.device)
 
 	test_dataset, test_dataloader = build_dataset(
-		dataset=args.dataset,
-		path=(args.test_lr_path, args.test_hr_path), 
-		batch_size=16, 
+		name=args.dataset,
 		scale_factor=args.scale_factor, 
-		test_flag=True)
+		state='test',
+		use_lms=args.use_lms)
 
-	ckpt = torch.load(args.ckpt, map_location=device)
-	model = ckpt['model']
+	# load ckpts
+	if args.ckpt == 'Bicubic':
+		model = Bicubic(31, args.scale_factor)
+	else:
+		ckpt = torch.load(args.ckpt, map_location=device)
+		model = ckpt['model'].to(device)
 
-	# external_checkpoint = ckpt['model']
-	# model = BiFQRNNREDC3D(channels=16, scale_factor=2).to(device)
-	# model.load_state_dict(external_checkpoint)
+	# forward test
+	if args.mode == 'HSI':
+		test(model, test_dataloader, device, use_lms=args.use_lms)
+	elif args.mode == 'RGB':
+		psnr, ssim, _ = test_rgb.test(model, test_dataloader, device)
 
-
-	test(model, test_dataloader, device)
+	# visual
+	if args.visual:
+		visual(model, test_dataloader, img_num=3, save_path=save_path, device=device)
 
 
 if __name__=='__main__':

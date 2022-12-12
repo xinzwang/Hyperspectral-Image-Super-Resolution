@@ -30,20 +30,32 @@ def SelectDatasetObject(name):
 		return SingleDataset
 	elif name in ['ICVL']:
 		return MultiDataset
+	elif name in ['DIV2K']:
+		return DIV2KDataset
+	elif name in ['CAVE_rgb']:
+		return HSI_RGB
 	else:
 		raise Exception('Unknown dataset:', name)
 
-def build_dataset(dataset, path, batch_size=32, scale_factor=2, test_flag=False):
-	datasetObj = SelectDatasetObject(dataset)
-	dataset = datasetObj(
-		path=path,
-		scale_factor=scale_factor, 
-		test_flag=test_flag,
-	)
-	dataloader = DataLoader(
-		dataset=dataset,
-		batch_size=batch_size if not test_flag else 1,
-		num_workers=8,
-		shuffle= (not test_flag)	# shuffle only train
-	)
+def build_dataset(name, scale_factor, state='test', use_lms=False, batch_size=16):
+	data_root = '/data2/wangxinzhe/codes/datasets/'
+	test_flag = (state in ['test', 'val'])
+	if name == 'CAVE':
+		hr_path = data_root + f'CAVE/{state}/HR/'
+		lr_path = data_root + f'CAVE/{state}/LR/X{scale_factor}/'
+		lms_path = data_root + f'CAVE/{state}/LMS/X{scale_factor}/'
+		dataset = HSIDataset(lr_path=lr_path, hr_path=hr_path, lms_path=lms_path if use_lms else None,
+												 test_flag=test_flag,cache_ram=False,use_lms=use_lms)
+	else:
+		raise Exception('Unknown dataset name:', name)
+	dataloader = DataLoader(dataset=dataset, batch_size=batch_size if not test_flag else 1,
+													pin_memory=True, shuffle=(not test_flag))
 	return dataset, dataloader
+
+
+def GetChansNumByDataName(name):
+	if name in ['CAVE', 'ICVL']:
+		channels = 31
+	else:
+		raise Exception('Unknown Dataset:', name)
+	return channels

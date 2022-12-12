@@ -10,17 +10,25 @@ import torch
 
 from .eval_metrics import cal_metrics, cal_metrics2
 
-def test(model, dataloader, device):
+def test(model, dataloader, device, rgb_mode=None, use_lms=False):
 	psnr, ssim, sam, ergas = [], [], [], []
 	run_time = 0
 	# forward all datas
 	model.eval()
 	with torch.no_grad():
-		for i, (lr, hr) in enumerate(tqdm(dataloader)):
+		for i, data in enumerate(tqdm(dataloader)):
+			if use_lms:
+				lr, lms, hr = data
+				lms = lms.to(device)
+			else:
+				lr, hr = data
 			lr = lr.to(device)
 
 			start_time = time.time()
-			pred = model(lr)
+			if rgb_mode is None:
+				pred = model(lr, lms) if use_lms else model(lr)
+			else:
+				pred = model.forward_hsi(lr)
 			end_time = time.time()
 			run_time += end_time-start_time
 
@@ -40,17 +48,25 @@ def test(model, dataloader, device):
 	return psnr, ssim, sam, ergas
 
 
-def visual(model, dataloader, img_num=3, save_path='img/', err_gain=10, device=None):
+def visual(model, dataloader, img_num=3, save_path='img/', err_gain=10, device=None, rgb_mode=None, use_lms=False):
 	# create save dir
 	if not os.path.exists(save_path):
 		os.makedirs(save_path)
 	# infer and save
 	it = iter(dataloader)
 	for i in range(min(img_num, dataloader.__len__())):
-		lr, hr = next(it)
+		if use_lms:
+			lr, lms, hr = next(it)
+			lms = lms.to(device)
+		else:
+			lr, hr = next(it)
 		lr = lr.to(device)
+
 		with torch.no_grad():
-			pred = model(lr)
+			if rgb_mode is None:
+				pred = model(lr, lms) if use_lms else model(lr)
+			else:
+				pred = model.forward_hsi(lr)
 		# assert len(pred)==1, Exception('Test batch_size should be 1, not:%d' %(len(pred)))
 		# torch->numpy; 1CHW->HWC; [0, 1]
 		hr_ = hr.cpu().numpy()[0].transpose(1,2,0)

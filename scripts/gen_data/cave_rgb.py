@@ -16,14 +16,13 @@ import os
 import argparse
 import glob
 import numpy as np
-import scipy.io as scio
 from common import gen_panel_from_area
 
 
 def parse_args():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--data_path', default='/data2/wangxinzhe/codes/datasets/CAVE/raw/')
-	parser.add_argument('--save_path', default='/data2/wangxinzhe/codes/datasets/CAVE/mat/')
+	parser.add_argument('--save_path', default='../../data/CAVE/')
 	parser.add_argument('--train_num', default=20)
 	parser.add_argument('--val_num', default=3)
 	parser.add_argument('--patch_size', default=64)
@@ -33,39 +32,32 @@ def parse_args():
 	return args
 
 def collect_data(path):
-	dir_path = sorted(glob.glob(path + '*_ms'))
+	dir_path = glob.glob(path + '*_ms')
 	print('file_num:', len(dir_path))
 	assert len(dir_path) == 32, Exception('CAVE should have 32 scenes')
 	
 	res = []
 	for p in dir_path:
 		name = p.split('/')[-1]
-		band_imgs = sorted(glob.glob(p + '/' + name + '/*.png'))
+		band_imgs = glob.glob(p + '/' + name + '/*.png')
 
 		hsi = []
-		for i, band_path in enumerate(band_imgs):
-			print('Band: %d'%(i), band_path )
+		for band_path in band_imgs:
 			if name == 'watercolors_ms':
 				band = cv2.imread(band_path, cv2.IMREAD_GRAYSCALE) / 255
 			else:
 				band= cv2.imread(band_path, -1) / 65535
 			hsi.append(band)
-			
-		hsi = np.array(hsi).transpose(1,2,0).astype(np.float32)
-
+		hsi = np.array(hsi)
 		print(f'[Collect] {name} shape:{hsi.shape} max:{hsi.max()} min:{hsi.min()} dtype:{hsi.dtype}')
-		scio.savemat(args.save_path + name + '.mat', {'data':hsi})
-
-		res.append(hsi)
+		res.append(hsi.transpose(1,2,0))
 	
-	return np.array(res)
+	return np.array(res).astype(np.float32)
 
 
 def run(args):
 	# Load cave images
 	cave_images = collect_data(args.data_path)	# [H, W, C]; [0, 1]; np.float32
-	
-	exit(0)
 
 	# Shuffle all images
 	np.random.shuffle(cave_images)
@@ -94,9 +86,9 @@ def run(args):
 	print(f'[Tesl]  {test_images.shape}')
 
 	# Save dataset
-	# np.save(args.save_path + 'train.npy', train_patches)
-	# np.save(args.save_path + 'val.npy', val_images)
-	# np.save(args.save_path + 'test.npy', test_images)
+	np.save(args.save_path + 'train.npy', train_patches)
+	np.save(args.save_path + 'val.npy', val_images)
+	np.save(args.save_path + 'test.npy', test_images)
 
 
 

@@ -15,58 +15,64 @@ import glob
 from pathlib import Path
 from torch.utils.data import Dataset
 
+import torchvision.transforms as transforms
 
+if __name__=='__main__':
+	from common import CenterCrop, Augment, Downsample
+else:
+	from .common import CenterCrop, Augment, Downsample
 
 
 class MultiDataset(Dataset):
 	def __init__(self, path, scale_factor=2, test_flag=False):
 		super(MultiDataset, self).__init__()
 		self.scale_factor = scale_factor
-		self.ratio = 1.0/scale_factor
 		self.test_flag = test_flag
 		self.paths = glob.glob(path + '*.npy')
+
 		data0 = np.load(self.paths[0])
 		self.channels = data0.shape[-1]
+
+		self.trans = transforms.Compose(
+			[transforms.ToTensor()]
+		)
 
 	def __len__(self):
 		return len(self.paths)
 
 	def __getitem__(self, index):
-		path = self.paths[index]
-		# print(path)
-		hr = np.load(path).astype(np.float32)	# HWC; [0, 1]; np.float32
+		hr = np.load(self.paths[index]).astype(np.float32)	# HWC; [0, 1]; np.float32
 
-		H, W, C = hr.shape
-		if (H % self.scale_factor !=0) or (W % self.scale_factor != 0):
-			hr = hr[0:H//self.scale_factor*self.scale_factor, 0:W//self.scale_factor*self.scale_factor, :]
-
-		if self.test_flag:
-			center_H = H // 2
-			center_W = W // 2
-			hr = hr[center_H-256:center_H+256, center_W-256:center_W+256, ...]
-		else:
-			# enhance
-			hr = rot90(hr)
-			hr = flip(hr)
+		if not self.test_flag:
+			hr = Augment(hr, hflip=True, rot=True)[0]
 			hr = np.ascontiguousarray(hr)
-		# down sample
-		lr = down_sample(hr, scale_factor=self.scale_factor, kernel_size=(9,9), sigma=3)
 
-		# cv2.imwrite('lr.png', np.mean(lr, axis=2)*255)
-		# cv2.imwrite('hr.png', np.mean(hr, axis=2)*255)
+		lr = self.trans(Downsample(hr, self.scale_factor, sigma=3, ksize=9))
+		hr = self.trans(hr)
 
-		return lr.transpose(2,0,1), hr.transpose(2,0,1)
+		return lr, hr
 
-	if __name__=='__main__':
-		data = np.load('/data2/wangxinzhe/codes/datasets/ICVL/test/selfie_0822-0906.npy')
-		print(data.dtype)
-		print(data.shape)
-		print(data.max())
-		print(data.min())
 
-		lr = down_sample(data, scale_factor=2, kernel_size=(9,9), sigma=3)
+if __name__=='__main__':
+	import cv2
+	train_path = '/data2/wangxinzhe/codes/datasets/ICVL/train/'
+	test_path  = '/data2/wangxinzhe/codes/datasets/ICVL/val/'
 
-		cv2.imwrite('lr.png', np.mean(lr, axis=2)*255)
-		cv2.imwrite('hr.png', np.mean(data, axis=2)*255)
+	train_set = MultiDataset(train_path, scale_factor=4, test_flag=False)
+	test_set = MultiDataset(test_path, scale_factor=4, test_flag=True)
+
+	print('Start')
+
+	for i in range(0, 3):
+		lr, hr = train_set.__getitem__(i)
+		cv2.imwrite('img/train_%d_lr.png'%(i), np.mean(lr.numpy(), axis=0)*255)
+		cv2.imwrite('img/train_%d_hr.png'%(i), np.mean(hr.numpy(), axis=0)*255)
+
+	
+	for i in range(0, 3):
+		lr, hr = test_set.__getitem__(i)
+		cv2.imwrite('img/test_%d_lr.png'%(i), np.mean(lr.numpy(), axis=0)*255)
+		cv2.imwrite('img/test_%d_hr.png'%(i), np.mean(hr.numpy(), axis=0)*255)
+
 
 
