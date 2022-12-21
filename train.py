@@ -93,7 +93,7 @@ def train(args):
 	optimizer = optim.Adam(core.model.parameters(), args.lr)
 	core.inject_optim(optimizer)
 	# scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, threshold=1e-4, min_lr=1e-5)
-	scheduler = optim.lr_scheduler.StepLR(optimizer, 200, gamma=0.5)
+	scheduler = optim.lr_scheduler.StepLR(optimizer, 200, gamma=0.3)
 	core.inject_scheduler(scheduler)
 
 	if args.parallel:

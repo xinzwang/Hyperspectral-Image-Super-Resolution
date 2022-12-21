@@ -46,6 +46,12 @@ def build_dataset(name, scale_factor, state='test', use_lms=False, batch_size=16
 		lms_path = data_root + f'CAVE/{state}/LMS/X{scale_factor}/'
 		dataset = HSIDataset(lr_path=lr_path, hr_path=hr_path, lms_path=lms_path if use_lms else None,
 												 test_flag=test_flag,cache_ram=False,use_lms=use_lms)
+	elif name == 'Harvard':
+		hr_path = data_root + f'Harvard/{state}/HR/'
+		lr_path = data_root + f'Harvard/{state}/LR/X{scale_factor}/'
+		lms_path = data_root + f'Harvard/{state}/LMS/X{scale_factor}/'
+		dataset = HSIDataset(lr_path=lr_path, hr_path=hr_path, lms_path=lms_path if use_lms else None,
+												 test_flag=test_flag,cache_ram=True,use_lms=use_lms)
 	else:
 		raise Exception('Unknown dataset name:', name)
 	dataloader = DataLoader(dataset=dataset, batch_size=batch_size if not test_flag else 1,
@@ -54,7 +60,7 @@ def build_dataset(name, scale_factor, state='test', use_lms=False, batch_size=16
 
 
 def GetChansNumByDataName(name):
-	if name in ['CAVE', 'ICVL']:
+	if name in ['CAVE', 'ICVL', 'Harvard']:
 		channels = 31
 	else:
 		raise Exception('Unknown Dataset:', name)

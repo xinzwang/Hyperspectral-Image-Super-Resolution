@@ -20,7 +20,7 @@ from models import *
 
 def parse_args():
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--mode', type=str, choices=['RGB', 'HSI'], required=True)
+	# parser.add_argument('--mode', type=str, choices=['RGB', 'HSI'], required=True)
 	parser.add_argument('--scale_factor', default=4, type=int)
 	parser.add_argument('--batch_size', default=1, type=int)
 	parser.add_argument('--device', default='cuda:1')
@@ -55,9 +55,9 @@ def run(args):
 		model = ckpt['model'].to(device)
 
 	# forward test
-	if args.mode == 'HSI':
+	if args.dataset in ('CAVE', 'Harvard', 'ICVL'):
 		test(model, test_dataloader, device, use_lms=args.use_lms)
-	elif args.mode == 'RGB':
+	elif args.dataset in ('Set5', 'Set14'):
 		psnr, ssim, _ = test_rgb.test(model, test_dataloader, device)
 
 	# visual
